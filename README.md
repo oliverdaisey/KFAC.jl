@@ -100,6 +100,7 @@ Other layers in the model (e.g., `BatchNorm`, activation functions) are updated 
 See the [`examples/`](examples/) directory:
 
 - `simple_classification.jl` — Train a small MLP on a synthetic classification task with KFAC and EKFAC.
+- `cnn_classification.jl` — Train a CNN (Conv + Dense layers) on synthetic image data with KFAC and EKFAC.
 
 ## Experiments
 

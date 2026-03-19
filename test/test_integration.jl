@@ -140,6 +140,111 @@
         @test opt.steps == 5
     end
 
+    @testset "KFAC trains a CNN classification task" begin
+        Random.seed!(606)
+        # Small synthetic images: 8x8x1
+        n_samples = 64
+        X = randn(Float32, 8, 8, 1, n_samples)
+        labels = rand(1:3, n_samples)
+        Y = Float32.(Flux.onehotbatch(labels, 1:3))
+
+        # Conv(3x3, 1=>4) -> Conv(3x3, 4=>8) -> flatten -> Dense(128=>3)
+        model = Chain(
+            Conv((3, 3), 1 => 4, relu),
+            Conv((3, 3), 4 => 8, relu),
+            Flux.flatten,
+            Dense(128 => 3)
+        )
+        opt = KFACOptimizer(lr=0.01, damping=0.1, TCov=1, TInv=1, momentum=0.0)
+        loss_fn(m, x, y) = Flux.logitcrossentropy(m(x), y)
+
+        initial_loss = loss_fn(model, X, Y)
+        for i in 1:30
+            _, model = kfac_step!(opt, model, loss_fn, X, Y)
+        end
+        final_loss = loss_fn(model, X, Y)
+
+        @test isfinite(final_loss)
+        @test final_loss < initial_loss
+    end
+
+    @testset "EKFAC trains a CNN classification task" begin
+        Random.seed!(707)
+        n_samples = 64
+        X = randn(Float32, 8, 8, 1, n_samples)
+        labels = rand(1:3, n_samples)
+        Y = Float32.(Flux.onehotbatch(labels, 1:3))
+
+        model = Chain(
+            Conv((3, 3), 1 => 4, relu),
+            Conv((3, 3), 4 => 8, relu),
+            Flux.flatten,
+            Dense(128 => 3)
+        )
+        opt = EKFACOptimizer(lr=0.01, damping=0.1, TCov=1, TInv=1, TScal=1, momentum=0.0)
+        loss_fn(m, x, y) = Flux.logitcrossentropy(m(x), y)
+
+        initial_loss = loss_fn(model, X, Y)
+        for i in 1:30
+            _, model = ekfac_step!(opt, model, loss_fn, X, Y)
+        end
+        final_loss = loss_fn(model, X, Y)
+
+        @test isfinite(final_loss)
+        @test final_loss < initial_loss
+    end
+
+    @testset "KFAC with mixed Conv and Dense layers" begin
+        Random.seed!(808)
+        n_samples = 32
+        X = randn(Float32, 6, 6, 1, n_samples)
+        labels = rand(1:2, n_samples)
+        Y = Float32.(Flux.onehotbatch(labels, 1:2))
+
+        # Single conv layer followed by dense
+        model = Chain(
+            Conv((3, 3), 1 => 2, relu),
+            Flux.flatten,
+            Dense(32 => 2)
+        )
+        opt = KFACOptimizer(lr=0.01, damping=0.1, TCov=1, TInv=1, momentum=0.9)
+        loss_fn(m, x, y) = Flux.logitcrossentropy(m(x), y)
+
+        loss1, model = kfac_step!(opt, model, loss_fn, X, Y)
+        @test isfinite(loss1)
+
+        # Verify KFAC found both Conv and Dense layers
+        kfac_layers = KFAC.get_kfac_layers(model)
+        @test length(kfac_layers) == 2
+        @test kfac_layers[1][2] isa Conv
+        @test kfac_layers[2][2] isa Dense
+
+        for i in 1:20
+            _, model = kfac_step!(opt, model, loss_fn, X, Y)
+        end
+        @test loss_fn(model, X, Y) < loss1
+    end
+
+    @testset "CNN parameters actually change" begin
+        Random.seed!(909)
+        model = Chain(
+            Conv((3, 3), 1 => 2, relu),
+            Flux.flatten,
+            Dense(32 => 2)
+        )
+        opt = KFACOptimizer(lr=0.01, damping=0.1, TCov=1, TInv=1, momentum=0.0)
+
+        X = randn(Float32, 6, 6, 1, 8)
+        Y = Float32.(Flux.onehotbatch(rand(1:2, 8), 1:2))
+        loss_fn(m, x, y) = Flux.logitcrossentropy(m(x), y)
+
+        conv_w_before = copy(model.layers[1].weight)
+        dense_w_before = copy(model.layers[3].weight)
+        _, model = kfac_step!(opt, model, loss_fn, X, Y)
+        @test model.layers[1].weight != conv_w_before
+        @test model.layers[3].weight != dense_w_before
+    end
+
     @testset "Multiple runs produce finite results" begin
         for seed in [1, 42, 100, 999]
             Random.seed!(seed)

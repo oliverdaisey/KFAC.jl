@@ -229,7 +229,7 @@ Compute per-sample gradient matrices for a Conv layer (used in EKFAC).
 # Returns
 A 3D array of shape `(C_out, patch_dim [+1], batch_size)`.
 """
-function compute_mat_grad(input::AbstractArray{T,4}, grad_output::AbstractArray{T,4}, layer::Conv) where T
+function compute_mat_grad(input::AbstractArray{<:Any,4}, grad_output::AbstractArray{<:Any,4}, layer::Conv)
     batch_size = size(input, 4)
     ksize = size(layer.weight)[1:2]
     ks = layer.stride
@@ -239,7 +239,7 @@ function compute_mat_grad(input::AbstractArray{T,4}, grad_output::AbstractArray{
 
     # Append ones for bias
     if layer.bias !== false && layer.bias !== nothing
-        patches = vcat(patches, ones(T, 1, size(patches, 2)))
+        patches = vcat(patches, ones(eltype(patches), 1, size(patches, 2)))
     end
 
     patch_dim = size(patches, 1)
@@ -253,7 +253,8 @@ function compute_mat_grad(input::AbstractArray{T,4}, grad_output::AbstractArray{
     g_reshaped = permutedims(reshape(grad_output, spatial_size, out_c, batch_size), (2, 1, 3))
 
     # Per-sample gradient: g_reshaped[:,:,b] * patches_3d[:,:,b]' for each b
-    grad = zeros(T, out_c, patch_dim, batch_size)
+    RT = promote_type(eltype(patches), eltype(grad_output))
+    grad = zeros(RT, out_c, patch_dim, batch_size)
     for b in 1:batch_size
         grad[:, :, b] = g_reshaped[:, :, b] * patches_3d[:, :, b]'
     end
