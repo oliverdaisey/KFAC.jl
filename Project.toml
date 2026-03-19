@@ -1,13 +1,30 @@
 name = "KFAC"
 uuid = "17d741e5-de93-402f-8251-f0aa7b756bfd"
-authors = ["oliverdaisey <oliverjdaisey@gmail.com> and contributors"]
 version = "1.0.0-DEV"
+authors = ["oliverdaisey <oliverjdaisey@gmail.com> and contributors"]
+
+[deps]
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+Functors = "d9f16b24-f501-4c13-a1f2-28368ffc5196"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Optimisers = "3bd65402-5787-11e9-1adc-39752487f4e2"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
+ChainRulesCore = "1.26.0"
+Flux = "0.16.9"
+Functors = "0.5.2"
+LinearAlgebra = "1.12.0"
+Optimisers = "0.4.7"
+Statistics = "1.11.1"
+Zygote = "0.7.10"
 julia = "1.10.10"
 
 [extras]
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Test", "Random"]
